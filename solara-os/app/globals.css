@@ -3,6 +3,9 @@
   --texto: #1a1a1a;
   --borda: #d9dce1;
   --primaria: #1f6feb;
+  --ok: #17803d;
+  --erro: #b91c1c;
+  --cinza: #e6e8eb;
 }
 
 * {
@@ -27,19 +30,30 @@ main {
   padding: 48px 24px;
 }
 
+main.largo {
+  max-width: 860px;
+}
+
 label {
   display: block;
   font-size: 14px;
   margin-bottom: 4px;
 }
 
-input {
+input,
+select,
+textarea {
   width: 100%;
   padding: 8px 10px;
   border: 1px solid var(--borda);
   border-radius: 6px;
   font-size: 14px;
   margin-bottom: 16px;
+  font-family: inherit;
+}
+
+textarea {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
 
 button {
@@ -57,8 +71,316 @@ button:disabled {
   cursor: default;
 }
 
+.botao-perigo {
+  background: var(--erro);
+}
+
 .erro {
-  color: #b91c1c;
+  color: var(--erro);
   font-size: 14px;
   margin-bottom: 16px;
+}
+
+.sucesso {
+  color: var(--ok);
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.aviso {
+  color: #555;
+  font-size: 14px;
+  background: #fff;
+  border: 1px solid var(--borda);
+  border-radius: 6px;
+  padding: 12px;
+}
+
+/* ---------- Cabecalho ---------- */
+.cabecalho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  background: #fff;
+  border-bottom: 1px solid var(--borda);
+}
+
+.cabecalho .marca {
+  font-weight: 700;
+  text-decoration: none;
+  color: var(--texto);
+}
+
+.cabecalho-direita {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cabecalho .usuario {
+  font-size: 13px;
+  color: #555;
+}
+
+.cabecalho .link-admin {
+  font-size: 13px;
+  color: var(--primaria);
+  text-decoration: none;
+}
+
+/* ---------- Menu de areas ---------- */
+.cartoes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.cartao {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 20px 16px;
+  background: #fff;
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  text-decoration: none;
+  color: var(--texto);
+}
+
+.cartao.desativado {
+  opacity: 0.55;
+}
+
+.cartao .tag {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #888;
+}
+
+/* ---------- Tabela / formularios de admin ---------- */
+.tabela {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 32px;
+  background: #fff;
+}
+
+.tabela th,
+.tabela td {
+  border: 1px solid var(--borda);
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 14px;
+}
+
+.form-usuario .areas {
+  border: 1px solid var(--borda);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-bottom: 16px;
+}
+
+.form-usuario .checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 16px;
+}
+
+.form-usuario .checkbox input {
+  width: auto;
+  margin: 0;
+}
+
+/* ---------- Organograma ---------- */
+.organograma {
+  background: #fff;
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.organograma-setas,
+.organograma-agentes {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.organograma-setas {
+  color: #999;
+  margin: 6px 0;
+}
+
+.org-cartao {
+  min-width: 120px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--borda);
+  background: var(--cinza);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: center;
+}
+
+.organograma > .org-cartao {
+  margin: 0 auto;
+  max-width: 180px;
+}
+
+.org-rotulo {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.org-detalhe {
+  font-size: 12px;
+  color: #444;
+}
+
+.org-vazio {
+  background: var(--cinza);
+  color: #888;
+}
+
+.org-ok {
+  background: #dff3e5;
+  border-color: var(--ok);
+}
+
+.org-erro {
+  background: #fde2e1;
+  border-color: var(--erro);
+}
+
+.org-rodando {
+  background: #e5efff;
+  border-color: var(--primaria);
+  animation: pulsar 1s ease-in-out infinite;
+}
+
+.org-ligacao-vermelha {
+  box-shadow: 0 0 0 2px var(--erro);
+}
+
+@keyframes pulsar {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* ---------- Fila de aprovacao ---------- */
+.fila {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.fila-item {
+  background: #fff;
+  border: 1px solid var(--borda);
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+.fila-titulo {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  color: var(--texto);
+  font-weight: 600;
+  padding: 12px;
+}
+
+.fila-detalhe {
+  padding: 0 12px 12px;
+}
+
+.fila-acoes {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ---------- Linha do tempo ---------- */
+.linha-tempo {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.lt-item {
+  border: 1px solid var(--borda);
+  border-left-width: 4px;
+  border-radius: 4px;
+  background: #fff;
+  margin-bottom: 6px;
+}
+
+.lt-ok {
+  border-left-color: var(--ok);
+}
+.lt-erro {
+  border-left-color: var(--erro);
+}
+.lt-rodando {
+  border-left-color: var(--primaria);
+}
+
+.lt-cabecalho {
+  width: 100%;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  background: transparent;
+  color: var(--texto);
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.lt-agente {
+  font-weight: 600;
+}
+
+.lt-status {
+  font-size: 12px;
+  text-transform: uppercase;
+  color: #666;
+}
+
+.lt-meta {
+  margin-left: auto;
+  font-size: 12px;
+  color: #666;
+}
+
+.lt-detalhe {
+  padding: 0 12px 12px;
+}
+
+.lt-detalhe h4 {
+  margin: 8px 0 4px;
+  font-size: 12px;
+  text-transform: uppercase;
+  color: #666;
+}
+
+.json {
+  background: #f2f3f5;
+  border: 1px solid var(--borda);
+  border-radius: 4px;
+  padding: 10px;
+  font-size: 12px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
 }

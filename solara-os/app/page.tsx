@@ -1,23 +1,53 @@
 import { redirect } from "next/navigation";
-import { criarClienteServidor } from "@/lib/supabase/server";
-import BotaoSair from "@/components/BotaoSair";
+import Link from "next/link";
+import { lerPerfilAtual } from "@/lib/perfil";
+import CabecalhoApp from "@/components/CabecalhoApp";
+import type { Area } from "@/lib/tipos";
 
-// Pagina inicial protegida. Sem sessao, volta para /login.
+// Menu de areas (SPEC 2.2).
+const AREAS_ATIVAS: { chave: Area; nome: string }[] = [
+  { chave: "vendas", nome: "Vendas" },
+  { chave: "financeiro", nome: "Financeiro" },
+];
+const AREAS_EM_BREVE = ["RH", "Jurídico", "Operações"];
+
 export default async function PaginaInicial() {
-  const supabase = await criarClienteServidor();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const perfil = await lerPerfilAtual();
+  if (!perfil) redirect("/login");
 
-  if (!user) {
-    redirect("/login");
-  }
+  const ativas = AREAS_ATIVAS.filter((a) => perfil.areas.includes(a.chave));
 
   return (
-    <main>
-      <h1>Solara OS</h1>
-      <p>{user.email}</p>
-      <BotaoSair />
-    </main>
+    <>
+      <CabecalhoApp
+        email={perfil.email}
+        nome={perfil.nome}
+        ehAdmin={perfil.papel === "admin"}
+      />
+      <main>
+        <h1>Áreas</h1>
+
+        <div className="cartoes">
+          {ativas.map((a) => (
+            <Link key={a.chave} href={`/${a.chave}`} className="cartao">
+              <strong>{a.nome}</strong>
+            </Link>
+          ))}
+
+          {AREAS_EM_BREVE.map((nome) => (
+            <div key={nome} className="cartao desativado">
+              <strong>{nome}</strong>
+              <span className="tag">em breve</span>
+            </div>
+          ))}
+        </div>
+
+        {ativas.length === 0 && (
+          <p className="aviso">
+            Seu perfil ainda não tem áreas liberadas. Fale com um administrador.
+          </p>
+        )}
+      </main>
+    </>
   );
 }

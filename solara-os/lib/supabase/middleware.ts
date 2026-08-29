@@ -34,6 +34,13 @@ export async function atualizarSessao(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const ehLogin = request.nextUrl.pathname.startsWith("/login");
+  const ehApi = request.nextUrl.pathname.startsWith("/api");
+
+  // Rotas de API cuidam da propria autenticacao e respondem com status
+  // JSON (401/403) — nao redirecionam para /login.
+  if (ehApi) {
+    return response;
+  }
 
   if (!user && !ehLogin) {
     const url = request.nextUrl.clone();

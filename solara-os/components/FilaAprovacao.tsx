@@ -4,7 +4,33 @@ import { useCallback, useEffect, useState } from "react";
 import { criarClienteBrowser } from "@/lib/supabase/client";
 import type { Aprovacao, Area, StatusAprovacao } from "@/lib/tipos";
 
-type Decisao = "aprovada" | "editada" | "rejeitada";
+export type Decisao = "aprovada" | "editada" | "rejeitada";
+
+// Formato da proposta de Vendas quando ha uma resposta pronta ao cliente
+// (SPEC 4.2, passo 6). Duck-typed: a fila e generica, usada tambem no
+// Financeiro, cuja proposta (hipotese de conciliacao) nao tem "resposta".
+interface PropostaComResposta {
+  resposta: string;
+  contexto?: {
+    itens?: {
+      descricao_cliente: string;
+      existe?: boolean;
+      atende_estoque?: boolean;
+    }[];
+  };
+  revisao?: {
+    aprovado?: boolean;
+    motivos?: string[];
+  };
+}
+
+function ehPropostaComResposta(proposta: unknown): proposta is PropostaComResposta {
+  return (
+    typeof proposta === "object" &&
+    proposta !== null &&
+    typeof (proposta as { resposta?: unknown }).resposta === "string"
+  );
+}
 
 // SPEC 3.4 — mesma fila usada em Vendas e Financeiro.
 export default function FilaAprovacao({
@@ -17,7 +43,8 @@ export default function FilaAprovacao({
 }) {
   const [itens, setItens] = useState<Aprovacao[]>([]);
   const [abertoId, setAbertoId] = useState<string | null>(null);
-  const [rascunho, setRascunho] = useState("");
+  const [rascunhoResposta, setRascunhoResposta] = useState("");
+  const [rascunhoJson, setRascunhoJson] = useState("");
   const [processando, setProcessando] = useState(false);
 
   const carregar = useCallback(async () => {
@@ -60,7 +87,11 @@ export default function FilaAprovacao({
       return;
     }
     setAbertoId(item.id);
-    setRascunho(JSON.stringify(item.proposta, null, 2));
+    if (ehPropostaComResposta(item.proposta)) {
+      setRascunhoResposta(item.proposta.resposta);
+    } else {
+      setRascunhoJson(JSON.stringify(item.proposta, null, 2));
+    }
   }
 
   async function decidir(item: Aprovacao, decisao: Decisao) {
@@ -83,12 +114,16 @@ export default function FilaAprovacao({
     };
 
     if (decisao === "editada") {
-      try {
-        patch.proposta = JSON.parse(rascunho);
-      } catch {
-        window.alert("O texto editado não é JSON válido.");
-        setProcessando(false);
-        return;
+      if (ehPropostaComResposta(item.proposta)) {
+        patch.proposta = { ...item.proposta, resposta: rascunhoResposta };
+      } else {
+        try {
+          patch.proposta = JSON.parse(rascunhoJson);
+        } catch {
+          window.alert("O texto editado não é JSON válido.");
+          setProcessando(false);
+          return;
+        }
       }
     }
 
@@ -115,51 +150,125 @@ export default function FilaAprovacao({
 
   return (
     <ul className="fila">
-      {itens.map((item) => (
-        <li key={item.id} className="fila-item">
-          <button className="fila-titulo" onClick={() => abrir(item)}>
-            {item.titulo}
-          </button>
+      {itens.map((item) => {
+        const proposta = ehPropostaComResposta(item.proposta) ? item.proposta : null;
+        const itensNaoVendidos =
+          proposta?.contexto?.itens?.filter((i) => i.existe === false) ?? [];
+        const itensSemEstoque =
+          proposta?.contexto?.itens?.filter(
+            (i) => i.existe !== false && i.atende_estoque === false,
+          ) ?? [];
+        const revisorReprovou = proposta?.revisao?.aprovado === false;
 
-          {abertoId === item.id && (
-            <div className="fila-detalhe">
-              <pre className="json">
-                {JSON.stringify(item.proposta, null, 2)}
-              </pre>
+        return (
+          <li key={item.id} className="fila-item">
+            <button className="fila-titulo" onClick={() => abrir(item)}>
+              {item.titulo}
+            </button>
 
-              <label htmlFor={`edit-${item.id}`}>Editar proposta (JSON)</label>
-              <textarea
-                id={`edit-${item.id}`}
-                value={rascunho}
-                onChange={(e) => setRascunho(e.target.value)}
-                rows={10}
-              />
+            {abertoId === item.id && (
+              <div className="fila-detalhe">
+                {proposta ? (
+                  <>
+                    {itensNaoVendidos.length > 0 && (
+                      <div className="fila-aviso fila-aviso-critico">
+                        <strong>
+                          Atenção: a Solara não vende {itensNaoVendidos.length === 1
+                            ? "este item"
+                            : "estes itens"}
+                          , confira antes de aprovar:
+                        </strong>
+                        <ul>
+                          {itensNaoVendidos.map((i, idx) => (
+                            <li key={idx}>{i.descricao_cliente}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
 
-              <div className="fila-acoes">
-                <button
-                  disabled={processando}
-                  onClick={() => decidir(item, "aprovada")}
-                >
-                  Aprovar
-                </button>
-                <button
-                  disabled={processando}
-                  onClick={() => decidir(item, "editada")}
-                >
-                  Salvar edição e aprovar
-                </button>
-                <button
-                  disabled={processando}
-                  className="botao-perigo"
-                  onClick={() => decidir(item, "rejeitada")}
-                >
-                  Rejeitar
-                </button>
+                    {itensSemEstoque.length > 0 && (
+                      <div className="fila-aviso">
+                        <strong>Estoque não atende a quantidade pedida:</strong>
+                        <ul>
+                          {itensSemEstoque.map((i, idx) => (
+                            <li key={idx}>{i.descricao_cliente}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {revisorReprovou && (
+                      <div className="fila-aviso">
+                        <strong>O Revisor não aprovou esta resposta:</strong>
+                        <ul>
+                          {(proposta.revisao?.motivos ?? []).map((m, idx) => (
+                            <li key={idx}>{m}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    <label htmlFor={`resposta-${item.id}`}>
+                      Resposta ao cliente
+                    </label>
+                    <textarea
+                      id={`resposta-${item.id}`}
+                      value={rascunhoResposta}
+                      onChange={(e) => setRascunhoResposta(e.target.value)}
+                      rows={10}
+                    />
+
+                    <details className="fila-json-detalhes">
+                      <summary>Ver dados completos (JSON)</summary>
+                      <pre className="json">
+                        {JSON.stringify(item.proposta, null, 2)}
+                      </pre>
+                    </details>
+                  </>
+                ) : (
+                  <>
+                    <pre className="json">
+                      {JSON.stringify(item.proposta, null, 2)}
+                    </pre>
+
+                    <label htmlFor={`edit-${item.id}`}>
+                      Editar proposta (JSON)
+                    </label>
+                    <textarea
+                      id={`edit-${item.id}`}
+                      value={rascunhoJson}
+                      onChange={(e) => setRascunhoJson(e.target.value)}
+                      rows={10}
+                    />
+                  </>
+                )}
+
+                <div className="fila-acoes">
+                  <button
+                    disabled={processando}
+                    onClick={() => decidir(item, "aprovada")}
+                  >
+                    Aprovar
+                  </button>
+                  <button
+                    disabled={processando}
+                    onClick={() => decidir(item, "editada")}
+                  >
+                    Salvar edição e aprovar
+                  </button>
+                  <button
+                    disabled={processando}
+                    className="botao-perigo"
+                    onClick={() => decidir(item, "rejeitada")}
+                  >
+                    Rejeitar
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
-        </li>
-      ))}
+            )}
+          </li>
+        );
+      })}
     </ul>
   );
 }
